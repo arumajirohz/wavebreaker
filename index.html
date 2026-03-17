@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Wavebreaker</title>
+    <style>
+        :root {
+            /* Material UI 3 inspired Dark Theme colors */
+            --bg: #0f0e13;
+            --surface: #1e1c24;
+            --primary: #d0bcfe;
+            --on-primary: #381e72;
+            --secondary: #ccc2dc;
+            --error: #ff5449;
+            --outline: #79747e;
+        }
+
+        html, body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg);
+            color: #e6e1e5;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            position: fixed;
+            inset: 0;
+        }
+
+        #game {
+            display: block;
+            position: fixed;
+            inset: 0;
+            width: 100dvw;
+            height: 100dvh;
+            z-index: 1;
+        }
+
+        /* Glassmorphism Header */
+        #ui-header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            background: rgba(15, 14, 19, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            z-index: 100;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .stat-pill {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px 16px;
+            border-radius: 100px;
+            display: flex;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 14px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+
+        /* Floating Action Bar */
+        #build-menu {
+            position: fixed;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(30, 28, 36, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 8px 16px;
+            border-radius: 32px;
+            display: flex;
+            gap: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.1);
+            z-index: 100;
+        }
+
+        .tower-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-fab {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            background: var(--surface);
+            color: var(--primary);
+            border: 2px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .btn-fab.active {
+            background: var(--primary);
+            color: var(--on-primary);
+            border-color: var(--primary);
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(208, 188, 254, 0.4);
+        }
+
+        .cost-label { font-size: 11px; font-weight: 800; color: var(--secondary); letter-spacing: 0.5px;}
+
+        /* Start Screen Style */
+        #start-screen {
+            position: fixed; inset: 0;
+            background: rgba(15, 14, 19, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+            text-align: center;
+        }
+
+        .game-title {
+            color: var(--primary);
+            font-size: 3.5rem;
+            letter-spacing: 2px;
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 20px rgba(208, 188, 254, 0.3);
+            text-align: center;
+        }
+
+        #overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(5px);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            text-align: center;
+        }
+
+        .btn-m3 {
+            background: var(--primary);
+            color: var(--on-primary);
+            border: none;
+            padding: 16px 40px;
+            border-radius: 100px;
+            font-weight: 800;
+            font-size: 16px;
+            letter-spacing: 1px;
+            margin-top: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(208, 188, 254, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-m3:active { 
+            transform: scale(0.95); 
+            box-shadow: 0 2px 6px rgba(208, 188, 254, 0.2);
+        }
+
+        /* Developer Mark */
+        .dev-mark {
+            position: absolute;
+            bottom: 24px;
+            color: var(--outline);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            transition: color 0.2s;
+        }
+
+        .dev-mark:hover {
+            color: var(--primary);
+        }
+    </style>
+    <!-- Poki SDK -->
+    <script src="https://game-cdn.poki.com/scripts/v2/poki-sdk.js"></script>
+</head>
+<body>
+
+    <!-- Start Screen UI -->
+    <div id="start-screen">
+        <h1 class="game-title">WAVEBREAKER</h1>
+        <p style="color:var(--secondary); font-size: 1.2rem; margin: 0;">Elemental Defense</p>
+        <button class="btn-m3" onpointerdown="startGame()">START GAME</button>
+        <a class="dev-mark" href="https://github.com/arumajirohz" target="_blank">https://github.com/arumajirohz</a>
+    </div>
+
+    <div id="ui-header">
+        <div class="stat-pill">
+            <span style="color:#facc15">🪙 <span id="gold-val">100</span></span>
+            <span style="color:var(--error)">❤️ <span id="hp-val">10</span></span>
+        </div>
+        <div class="stat-pill" style="color:var(--primary)">
+            WAVE <span id="wave-val" style="margin-left:4px;">1</span>
+        </div>
+    </div>
+
+    <!-- Build Menu -->
+    <div id="build-menu">
+        <div class="tower-option">
+            <button class="btn-fab active" onpointerdown="setTowerType('FIRE', this); event.stopPropagation();">🔥</button>
+            <span class="cost-label">30G</span>
+        </div>
+        <div class="tower-option">
+            <button class="btn-fab" onpointerdown="setTowerType('ICE', this); event.stopPropagation();">❄️</button>
+            <span class="cost-label">40G</span>
+        </div>
+        <div class="tower-option">
+            <button class="btn-fab" onpointerdown="setTowerType('POISON', this); event.stopPropagation();">☣️</button>
+            <span class="cost-label">50G</span>
+        </div>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div id="overlay">
+        <h1 style="color:var(--error); font-size: 2.5rem; letter-spacing: 2px; margin: 0;">BREACH DETECTED</h1>
+        <p id="stats-txt" style="color:var(--secondary); font-size: 1.2rem; margin-top: 10px;"></p>
+        <button class="btn-m3" onpointerdown="handleReboot()">REBOOT SYSTEM</button>
+        <a class="dev-mark" href="https://github.com/arumajirohz" target="_blank">https://github.com/arumajirohz</a>
+    </div>
+
+    <canvas id="game"></canvas>
+
+<script>
+// --- Poki SDK Integration ---
+let isPokiReady = false;
+let gamePaused = false;
+let gameStarted = false;
+
+// 1. Initialize SDK Safely
+if (typeof PokiSDK !== 'undefined') {
+    PokiSDK.init().then(() => {
+        console.log("Poki SDK initialized");
+        isPokiReady = true;
+    }).catch(() => {
+        console.log("Poki SDK blocked or failed");
+    });
+}
+
+// 2. Ad Support Function
+function showAd(onComplete) {
+    if (!isPokiReady) {
+        if (onComplete) onComplete();
+        return;
+    }
+    
+    // Pause game and audio during commercial break
+    gamePaused = true; 
+    if (audio && audio.state === 'running') audio.suspend();
+    
+    PokiSDK.commercialBreak().then(() => {
+        // Resume game and audio after ad finishes
+        gamePaused = false;
+        if (audio && audio.state === 'suspended') audio.resume();
+        if (onComplete) onComplete();
+    });
+}
+
+// 3. Handle game reboot with an ad
+window.handleReboot = function() {
+    showAd(() => {
+        location.reload();
+    });
+};
+
+// --- Start Game Function ---
+window.startGame = function() {
+    gameStarted = true;
+    document.getElementById("start-screen").style.display = "none";
+    
+    // Resume audio context which requires user gesture
+    if(audio.state === 'suspended') audio.resume();
+    
+    // Tell Poki gameplay has begun
+    if (typeof PokiSDK !== 'undefined' && isPokiReady) {
+        PokiSDK.gameplayStart(); 
+    }
+};
+
+// --- Audio ---
+const audio = new (window.AudioContext || window.webkitAudioContext)();
+function beep(){
+    if(audio.state==='suspended') return; // Don't try to play if suspended
+    let osc = audio.createOscillator();
+    let gain = audio.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(1000, audio.currentTime);
+    osc.frequency.setValueAtTime(600, audio.currentTime + 0.05); // pitch drop
+    gain.gain.setValueAtTime(0.05, audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.1);
+    osc.connect(gain);
+    gain.connect(audio.destination);
+    osc.start();
+    osc.stop(audio.currentTime + 0.1);
+}
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+// --- Canvas Scaling ---
+function sizeCanvas(){
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = innerWidth * dpr;
+    canvas.height = innerHeight * dpr;
+    canvas.style.width = innerWidth + "px";
+    canvas.style.height = innerHeight + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+sizeCanvas();
+
+let gold=100, health=10, wave=1, spawned=0, lastSpawn=0;
+let enemies=[], towers=[], bullets=[], uiTexts=[];
+let combo=0, comboTimer=0, slowMo=1;
+
+// Default Tower
+let towerType="FIRE"; 
+
+function setTowerType(type, btn) {
+    towerType = type;
+    document.querySelectorAll('.btn-fab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+const ENEMY_DATA={
+ DRONE:{emoji:'🚀',hp:40,spd:120,val:5},
+ TANK:{emoji:'🛡️',hp:400,spd:60,val:20},
+ SWARM:{emoji:'🐝',hp:20,spd:150,val:3}
+};
+
+// Elemental Towers
+const TOWER_DATA={
+ FIRE:{emoji:'🔥',cost:30,range:120,cool:0.5,dmg:40},
+ ICE:{emoji:'❄️',cost:40,range:150,cool:1.0,dmg:10},
+ POISON:{emoji:'☣️',cost:50,range:140,cool:0.8,dmg:5}
+};
+
+function updateUI(){
+ document.getElementById("gold-val").textContent=gold;
+ document.getElementById("hp-val").textContent=health;
+ document.getElementById("wave-val").textContent=wave;
+}
+
+function createPath(){
+ let p=[],w=innerWidth,h=innerHeight;
+ p.push({x:w*0.5,y:-50});
+ let y=h*0.2;
+ while(y<h*0.8){
+  p.push({x:80+Math.random()*(w-160),y});
+  y+=h*0.25;
+ }
+ p.push({x:w*0.5,y:h+50});
+ return p;
+}
+let path=createPath();
+
+// Resize Handler
+window.addEventListener("resize", () => {
+    sizeCanvas();
+    path = createPath(); 
+    enemies = [];        
+    towers = [];
+    bullets = [];
+    uiTexts = [];
+    spawned = 0;         
+});
+
+// Math Helper for Path Distance
+function distToSegmentSquared(p, v, w) {
+    let l2 = (w.x - v.x) ** 2 + (w.y - v.y) ** 2;
+    if (l2 === 0) return (p.x - v.x) ** 2 + (p.y - v.y) ** 2;
+    let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+    t = Math.max(0, Math.min(1, t)); 
+    return (p.x - (v.x + t * (w.x - v.x))) ** 2 + (p.y - (v.y + t * (w.y - v.y))) ** 2;
+}
+
+// Floating Texts
+class FloatingText {
+    constructor(text, x, y, color) {
+        this.text = text; this.x = x; this.y = y; this.color = color; this.life = 1.0;
+    }
+    update(dt) { this.y -= 30 * dt; this.life -= dt; }
+    draw() {
+        ctx.globalAlpha = Math.max(0, this.life);
+        ctx.fillStyle = this.color; ctx.font = "bold 16px sans-serif";
+        ctx.textAlign = "center"; ctx.fillText(this.text, this.x, this.y);
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+class Enemy{
+ constructor(key, bossType = -1){
+  const d=ENEMY_DATA[key];
+  this.x=path[0].x;
+  this.y=path[0].y;
+  this.step=0;
+  this.key=key;
+
+  let hpMult = 1 + wave * 0.25;
+  let spdMult = 1;
+  this.emoji = d.emoji;
+
+  if (bossType === 0) { this.emoji = '👾'; hpMult *= 3; } 
+  else if (bossType === 1) { this.emoji = '🐍'; hpMult *= 1.5; spdMult = 2; } 
+  else if (bossType === 2) { this.emoji = '💀'; hpMult *= 5; spdMult = 0.6; } 
+
+  this.maxHp = d.hp * hpMult;
+  this.hp = this.maxHp;
+  this.vx = 0;
+  this.vy = 0;
+  this.baseSpeed = (d.spd + wave * 2) * spdMult;
+  
+  this.slowTimer = 0;
+  this.poisonTimer = 0;
+ }
+
+ update(dt){
+  if (this.slowTimer > 0) this.slowTimer -= dt;
+  if (this.poisonTimer > 0) {
+      this.poisonTimer -= dt;
+      this.hp -= 15 * dt; 
+  }
+
+  let currentSpeed = this.slowTimer > 0 ? this.baseSpeed * 0.5 : this.baseSpeed;
+
+  let t=path[this.step+1];
+  let dx=t.x-this.x,dy=t.y-this.y;
+  let dist=Math.hypot(dx,dy);
+
+  let ax=(dx/dist)*currentSpeed*2; 
+  let ay=(dy/dist)*currentSpeed*2;
+
+  this.vx+=ax*dt;
+  this.vy+=ay*dt;
+
+  this.vx*=0.95; 
+  this.vy*=0.95;
+
+  this.x+=this.vx*dt;
+  this.y+=this.vy*dt;
+
+  if(dist<15){
+   this.step++;
+   if(this.step>=path.length-1){
+    health--;
+    updateUI();
+    this.hp=0;
+
+    // Show Game Over Overlay
+    if (health <= 0) {
+        document.getElementById("stats-txt").textContent = `Reached Wave ${wave}`;
+        document.getElementById("overlay").style.display = "flex";
+        if (typeof PokiSDK !== 'undefined' && isPokiReady) {
+            PokiSDK.gameplayStop(); 
+        }
+    }
+   }
+  }
+ }
+
+ draw(){
+  ctx.font="28px serif";
+  ctx.textAlign="center";
+  ctx.fillText(this.emoji,this.x,this.y);
+ }
+}
+
+class Tower{
+ constructor(x,y,type){
+  this.x=x;this.y=y;this.type=type;
+  this.cool=0;this.lvl=1;
+ }
+ update(dt){
+  if(this.cool>0)this.cool-=dt;
+
+  if(this.cool<=0){
+   let r=TOWER_DATA[this.type].range+this.lvl*20;
+   let t=enemies.find(e=>Math.hypot(e.x-this.x,e.y-this.y)<r);
+
+   if(t){
+    bullets.push(new Bullet(this.x,this.y,t,this.type,this.lvl));
+    this.cool=TOWER_DATA[this.type].cool*(1-this.lvl*0.1);
+   }
+  }
+ }
+ draw(){
+  ctx.font="30px serif";
+  ctx.fillText(TOWER_DATA[this.type].emoji,this.x,this.y);
+ }
+}
+
+class Bullet{
+ constructor(x,y,t,type,lvl){
+  this.x=x;this.y=y;this.t=t;
+  this.type=type;this.lvl=lvl;
+ }
+
+ update(dt){
+  if(!this.t||this.t.hp<=0)return this.dead=true;
+
+  let dx=this.t.x-this.x,dy=this.t.y-this.y;
+  let d=Math.hypot(dx,dy);
+
+  if(d<10){
+   let crit = Math.random() < 0.2;
+   let dmg = TOWER_DATA[this.type].dmg + this.lvl * 12;
+
+   if(crit) {
+       dmg *= 2;
+       uiTexts.push(new FloatingText("CRIT", this.x, this.y - 20, "var(--error)"));
+   }
+
+   this.t.hp -= dmg;
+
+   if (this.type === 'ICE') this.t.slowTimer = 2;
+   if (this.type === 'POISON') this.t.poisonTimer = 3;
+
+   if(this.t.hp<=0){
+    combo++;
+    comboTimer=2;
+
+    let reward = Math.floor(ENEMY_DATA[this.t.key].val * (1 + combo * 0.2));
+    gold += reward;
+
+    uiTexts.push(new FloatingText(`+${reward}G`, this.x, this.y, "#facc15"));
+    if (combo > 1) uiTexts.push(new FloatingText(`${combo}x`, this.x + 20, this.y - 15, "var(--primary)"));
+    
+    slowMo = 0.3; 
+    beep(); 
+    updateUI();
+   }
+
+   this.dead=true;
+  }else{
+   this.x+=dx/d*400*dt;
+   this.y+=dy/d*400*dt;
+  }
+ }
+
+ draw(){
+  ctx.fillStyle = this.type === 'FIRE' ? '#ff5449' : (this.type === 'ICE' ? '#ccc2dc' : '#88e060');
+  ctx.beginPath();
+  ctx.arc(this.x,this.y,4,0,7);
+  ctx.fill();
+ }
+}
+
+canvas.addEventListener("pointerdown",e=>{
+ // Prevent building if game hasn't started or is paused
+ if (!gameStarted || gamePaused || health <= 0) return;
+
+ let x=e.clientX,y=e.clientY;
+
+ let t=towers.find(t=>Math.hypot(t.x-x,t.y-y)<40);
+ if(t){
+  if(gold>=40){
+   gold-=40;
+   t.lvl++;
+   updateUI();
+  }
+  return;
+ }
+
+ let onPath = false;
+ for (let i = 0; i < path.length - 1; i++) {
+     if (distToSegmentSquared({x, y}, path[i], path[i+1]) < 3600) {
+         onPath = true;
+         break;
+     }
+ }
+
+ if (onPath) {
+     uiTexts.push(new FloatingText("NO BUILD 🚫", x, y, "var(--error)"));
+     return; 
+ }
+
+ let cost=TOWER_DATA[towerType].cost;
+ if(gold>=cost){
+  towers.push(new Tower(x,y,towerType));
+  gold-=cost;
+  updateUI();
+ }
+});
+
+let last=performance.now();
+
+function loop(t){
+ // Pause logic: wait until game started AND not in Poki ad
+ if (!gameStarted || gamePaused) {
+     last = t; 
+     requestAnimationFrame(loop);
+     return;
+ }
+
+ let dt=(t-last)/1000;
+ last=t;
+
+ dt*=slowMo;
+ slowMo+=(1-slowMo)*0.2; 
+
+ if(comboTimer>0) comboTimer-=dt;
+ else combo=0;
+
+ ctx.clearRect(0,0,innerWidth,innerHeight);
+
+ ctx.strokeStyle="#333";
+ ctx.lineWidth=50;
+ ctx.beginPath();
+ ctx.moveTo(path[0].x,path[0].y);
+ path.forEach(p=>ctx.lineTo(p.x,p.y));
+ ctx.stroke();
+
+ if(spawned<wave*5 && t-lastSpawn>Math.max(300,1200-wave*20)){
+  let keys=Object.keys(ENEMY_DATA);
+  enemies.push(new Enemy(keys[Math.random()*keys.length|0]));
+  lastSpawn=t;
+  spawned++;
+ }
+
+ if(spawned>=wave*5 && enemies.length===0){
+  wave++;
+  spawned=0;
+
+  if(wave%5===0){
+   let bossType = Math.floor(Math.random() * 3);
+   enemies.push(new Enemy("TANK", bossType)); 
+  }
+
+  updateUI();
+ }
+
+ enemies=enemies.filter(e=>e.hp>0);
+ enemies.forEach(e=>{e.update(dt);e.draw();});
+
+ towers.forEach(t=>{t.update(dt);t.draw();});
+
+ bullets=bullets.filter(b=>!b.dead);
+ bullets.forEach(b=>{b.update(dt);b.draw();});
+
+ uiTexts=uiTexts.filter(t=>t.life>0);
+ uiTexts.forEach(t=>{t.update(dt);t.draw();});
+
+ requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
+
